@@ -194,14 +194,12 @@ jina-gayo/
 ```txt
 requests
 python-dotenv
-google-generativeai
-```
+
 
 | 라이브러리 | 역할 |
 |---|---|
-| `requests` | HTTP 요청 도구. Kakao Local 호출 |
-| `python-dotenv` | `.env` 파일을 읽어 환경변수로 올림 |
-| `google-generativeai` | Gemini 공식 SDK |
+| `requests` | 	HTTP 요청 도구. Gemini(POST)·Kakao(GET) 두 API 모두 이걸로 직접 호출 |
+| `python-dotenv` | `.env` 파일을 읽어 환경변수로 올림 | 
 
 ---
 
