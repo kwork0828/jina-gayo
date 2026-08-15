@@ -161,7 +161,10 @@ pip install -r requirements.txt
 ```
 
 #### ▸ 6~7. API 키 발급
-![Kakao 키](images/06-kakao-key.png)
+![Kakao 키] 
+<img width="758" height="231" alt="1" src="https://github.com/user-attachments/assets/5336c47f-8dbb-49a8-afc8-5364b21e0138" />
+
+
 ![Gemini 키]
 <img width="642" height="316" alt="image" src="https://github.com/user-attachments/assets/a0925d07-5530-4614-8131-e74162005cf4" />
 
