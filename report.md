@@ -152,7 +152,8 @@ python --version
 > TODO 확인. 과제 요건인 **3.10 이상**을 충족한다.
 
 #### ▸ 4. 폴더 구조 생성
-![폴더 구조](images/04-folder-structure.png)
+<img width="360" height="342" alt="03 folder" src="https://github.com/user-attachments/assets/883855ba-b4a1-4152-ac17-38020ad4a67e" />
+
 
 #### ▸ 5. 라이브러리 설치
 ![라이브러리 설치](images/05-pip-install.png)
@@ -161,11 +162,11 @@ pip install -r requirements.txt
 ```
 
 #### ▸ 6~7. API 키 발급
-![Kakao 키] 
+[Kakao 키] 
 <img width="758" height="231" alt="1" src="https://github.com/user-attachments/assets/5336c47f-8dbb-49a8-afc8-5364b21e0138" />
 
 
-![Gemini 키]
+[Gemini 키]
 <img width="642" height="316" alt="image" src="https://github.com/user-attachments/assets/a0925d07-5530-4614-8131-e74162005cf4" />
 
 > ⚠️ 두 캡처 모두 **키 문자열을 검은 사각형으로 가린 뒤** 저장했다.
