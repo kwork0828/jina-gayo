@@ -155,8 +155,10 @@ python --version
 <img width="360" height="342" alt="03 folder" src="https://github.com/user-attachments/assets/883855ba-b4a1-4152-ac17-38020ad4a67e" />
 
 
-#### ▸ 5. 라이브러리 설치 
-<img width="766" height="262" alt="image" src="https://github.com/user-attachments/assets/d2429e01-c8c6-4302-8621-d90beb02e4a7" />
+#### ▸ 5. 라이브러리 설치  
+<img width="799" height="575" alt="image" src="https://github.com/user-attachments/assets/66f8f893-9bf7-4b78-8147-729cedbb1717" />
+
+
 
 ```bash
 pip install -r requirements.txt
