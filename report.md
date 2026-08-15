@@ -162,7 +162,9 @@ pip install -r requirements.txt
 
 #### ▸ 6~7. API 키 발급
 ![Kakao 키](images/06-kakao-key.png)
-![Gemini 키](images/07-gemini-key.png)
+![Gemini 키]
+<img width="642" height="316" alt="image" src="https://github.com/user-attachments/assets/a0925d07-5530-4614-8131-e74162005cf4" />
+
 > ⚠️ 두 캡처 모두 **키 문자열을 검은 사각형으로 가린 뒤** 저장했다.
 
 #### ▸ 8. Codespaces Secrets 등록
