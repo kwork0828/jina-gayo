@@ -222,6 +222,9 @@ python-dotenv
 [API_KEY 등록]
 <img width="718" height="200" alt="image" src="https://github.com/user-attachments/assets/20183713-f780-40f2-a398-b2cc663a7b0e" />
 
+[API_KEY 등록확인]_코드스페이스에 연동 
+<img width="761" height="209" alt="image" src="https://github.com/user-attachments/assets/f7e9ef46-1d13-475a-8314-92d1c3229858" />
+
 
 
 ---
