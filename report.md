@@ -138,10 +138,14 @@
 > 첫 커밋부터 `.env` 가 차단되도록 하기 위해서다. **보안은 나중에 붙이는 것이 아니라 시작 전에 세팅해야 한다.**
 
 #### ▸ 2. Codespace 실행
-![Codespace 실행](images/02-codespace-launch.png)
+<img width="1152" height="1005" alt="01 code_space" src="https://github.com/user-attachments/assets/61aa175f-2cab-4ac1-8bf8-e5839ac2fae3" />
+
+
 
 #### ▸ 3. Python 버전 확인
-![Python 버전](images/03-python-version.png)
+<img width="855" height="172" alt="02 python-version" src="https://github.com/user-attachments/assets/fea48d2e-02cb-466e-8bb7-aee2c4429f7a" />
+
+![Python 버전]
 ```bash
 python --version
 ```
