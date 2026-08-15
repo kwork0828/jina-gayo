@@ -219,6 +219,13 @@ python-dotenv
 
 ---
 
+[API_KEY 등록]
+<img width="718" height="200" alt="image" src="https://github.com/user-attachments/assets/20183713-f780-40f2-a398-b2cc663a7b0e" />
+
+
+
+---
+
 ## 3. 프로그램 구조
 
 ### 3-1. 전체 흐름도
