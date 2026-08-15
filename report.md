@@ -155,8 +155,9 @@ python --version
 <img width="360" height="342" alt="03 folder" src="https://github.com/user-attachments/assets/883855ba-b4a1-4152-ac17-38020ad4a67e" />
 
 
-#### ▸ 5. 라이브러리 설치
-![라이브러리 설치](images/05-pip-install.png)
+#### ▸ 5. 라이브러리 설치 
+<img width="766" height="262" alt="image" src="https://github.com/user-attachments/assets/d2429e01-c8c6-4302-8621-d90beb02e4a7" />
+
 ```bash
 pip install -r requirements.txt
 ```
@@ -204,6 +205,9 @@ jina-gayo/
 ```txt
 requests
 python-dotenv
+
+<img width="799" height="575" alt="image" src="https://github.com/user-attachments/assets/348aa203-ecff-42b9-91d1-3b5980713ee7" />
+
 
 
 | 라이브러리 | 역할 |
