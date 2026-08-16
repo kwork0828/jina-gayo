@@ -1,6 +1,6 @@
 """
 jina-gayo : API 활용 국내 여행지 추천 프로그램
-A1-2 과제 — CLI + 1차 추천(Gemini) + 맛집 검색(Kakao) + 최종 리포트 저장
+A1-2 과제 — CLI + 1차 추천(Gemini) + 맛집 검색(Kakao) + 리포트 + 결과 캐싱
 """
 
 import argparse
@@ -51,6 +51,11 @@ def parse_args():
         required=True,
         metavar="YYYY-MM-DD",
         help="여행 날짜 (예: 2026-03-15)",
+    )
+    parser.add_argument(
+        "--refresh",
+        action="store_true",
+        help="저장된 결과를 무시하고 API를 다시 호출합니다",
     )
     args = parser.parse_args()
 
@@ -420,6 +425,25 @@ def generate_report(date_text, rec, places, api_key, errors):
     return append_errors_section(body, errors)
 
 
+# ── 보너스: 결과 캐싱 ───────────────────────────────────
+def load_cache(date_text):
+    """같은 날짜의 원본 JSON이 이미 있으면 읽어서 돌려준다. 없으면 None."""
+    path = Path("results") / f"{date_text}_raw.json"
+    if not path.exists():
+        return None
+
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        # 파일이 깨졌으면 캐시가 없는 것으로 보고 정상 경로로 진행한다.
+        return None
+
+    # 필요한 키가 다 있어야 캐시로 인정한다.
+    if "recommendation" not in data or "restaurants" not in data:
+        return None
+    return data
+
+
 # ── 결과 저장 ───────────────────────────────────────────
 def save_results(date_text, payload, markdown):
     """results/ 폴더를 만들고 원본 JSON과 최종 리포트를 저장한다."""
@@ -444,12 +468,24 @@ def main():
 
     print(f"여행 날짜: {args.date}")
 
-    print("[1/3] 1차 추천 생성 중(LLM)...")
-    rec = get_recommendation(args.date, gemini_key, errors)
-    print(f"    - recommended_city : {rec['recommended_city']}")
+    cached = None if args.refresh else load_cache(args.date)
 
-    print("[2/3] 맛집 검색 중(지도/장소 API)...")
-    places = search_restaurants(rec["recommended_city"], kakao_key, errors)
+    if cached:
+        # 보너스: 같은 날짜로 다시 실행하면 API를 부르지 않는다.
+        rec = cached["recommendation"]
+        places = cached["restaurants"]
+        errors = list(cached.get("errors", []))
+        print("[캐시] 저장된 결과를 찾았습니다. API 호출 2회를 건너뜁니다.")
+        print(f"    - recommended_city : {rec['recommended_city']}")
+        print(f"    - 저장된 맛집      : {len(places)}곳")
+        print("    - 새로 받으려면 --refresh 옵션을 붙이세요.")
+    else:
+        print("[1/3] 1차 추천 생성 중(LLM)...")
+        rec = get_recommendation(args.date, gemini_key, errors)
+        print(f"    - recommended_city : {rec['recommended_city']}")
+
+        print("[2/3] 맛집 검색 중(지도/장소 API)...")
+        places = search_restaurants(rec["recommended_city"], kakao_key, errors)
 
     print("[3/3] 최종 리포트 생성 중(LLM)...")
     markdown = generate_report(args.date, rec, places, gemini_key, errors)
