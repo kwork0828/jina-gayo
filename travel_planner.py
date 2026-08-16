@@ -1,6 +1,6 @@
 """
 jina-gayo : API 활용 국내 여행지 추천 프로그램
-A1-2 과제 — 현재 단계: CLI + 1차 추천(Gemini) + 맛집 검색(Kakao)
+A1-2 과제 — CLI + 1차 추천(Gemini) + 맛집 검색(Kakao) + 최종 리포트 저장
 """
 
 import argparse
@@ -8,6 +8,7 @@ import json
 import os
 import sys
 from datetime import datetime
+from pathlib import Path
 
 import requests
 from dotenv import load_dotenv
@@ -15,7 +16,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # ── 설정값 ──────────────────────────────────────────────
-GEMINI_MODEL = "gemini-3.5-flash"
+GEMINI_MODEL = "gemini-3.5-flash-lite"
 GEMINI_URL = (
     "https://generativelanguage.googleapis.com/v1beta/"
     f"models/{GEMINI_MODEL}:generateContent"
@@ -151,14 +152,16 @@ def extract_json(text):
 
 
 # ── 1단계: LLM 1차 추천 ─────────────────────────────────
-def call_gemini(prompt, api_key):
+def call_gemini(prompt, api_key, json_mode=True):
     """Gemini에 프롬프트를 보내고(POST) 생성된 텍스트를 돌려받는다."""
+    config = {"maxOutputTokens": MAX_OUTPUT_TOKENS}
+    if json_mode:
+        # 1차 추천은 JSON으로 받아야 하고, 최종 리포트는 Markdown이라 끈다.
+        config["responseMimeType"] = "application/json"
+
     payload = {
         "contents": [{"parts": [{"text": prompt}]}],
-        "generationConfig": {
-            "responseMimeType": "application/json",
-            "maxOutputTokens": MAX_OUTPUT_TOKENS,
-        },
+        "generationConfig": config,
     }
     headers = {
         "x-goog-api-key": api_key,
@@ -314,6 +317,125 @@ def search_restaurants(city, api_key, errors):
     return places
 
 
+# ── 3단계: 최종 리포트 생성 ─────────────────────────────
+def places_to_text(places):
+    """맛집 목록을 프롬프트에 넣기 좋은 글로 바꾼다."""
+    if not places:
+        return "(데이터 없음)"
+    lines = []
+    for p in places:
+        lines.append(f"- {p['name']} / {p['category']} / {p['address']} / {p['url']}")
+    return "\n".join(lines)
+
+
+def build_report_prompt(date_text, rec, places):
+    """최종 리포트용 프롬프트를 만든다."""
+    return (
+        f"아래 자료로 {date_text} 국내 여행 리포트를 한국어 Markdown으로 작성하세요.\n"
+        "코드블록 표시는 쓰지 말고 Markdown 본문만 출력하세요.\n"
+        "자료에 없는 가게 이름이나 행사는 절대 지어내지 마세요.\n\n"
+        f"제목은 '# {date_text} 국내 여행 추천 리포트' 로 시작하세요.\n"
+        "아래 여섯 개 절을 반드시 넣으세요.\n"
+        "## 추천 지역\n## 추천 이유\n## 날씨 요약\n## 행사/축제\n"
+        "## 맛집 추천\n## 1일 일정 제안\n\n"
+        "'맛집 추천'은 아래 목록만 표로 정리하세요. 목록이 '(데이터 없음)'이면 "
+        "'- 데이터 없음 (장소 검색 결과 0건)' 한 줄만 쓰세요.\n"
+        "'1일 일정 제안'은 오전/오후/저녁 세 줄로 쓰세요.\n\n"
+        "### 자료\n"
+        f"날짜: {date_text}\n"
+        f"추천 도시: {rec['recommended_city']}\n"
+        f"날씨: {rec['weather']}\n"
+        f"행사: {rec['events']}\n"
+        f"추천 이유: {rec['reason']}\n"
+        f"맛집 목록:\n{places_to_text(places)}\n"
+    )
+
+
+def build_fallback_report(date_text, rec, places):
+    """LLM 리포트 생성이 실패해도 리포트는 반드시 만든다(파이썬으로 직접 조립)."""
+    lines = [f"# {date_text} 국내 여행 추천 리포트", ""]
+    lines += ["## 추천 지역", "", f"- {rec['recommended_city']}", ""]
+    lines += ["## 추천 이유", "", rec["reason"], ""]
+    lines += ["## 날씨 요약", "", rec["weather"], ""]
+
+    lines += ["## 행사/축제", ""]
+    if rec["events"]:
+        lines += [f"- {e}" for e in rec["events"]]
+    else:
+        lines.append("- 데이터 없음")
+    lines.append("")
+
+    lines += ["## 맛집 추천", ""]
+    if places:
+        lines.append("| 이름 | 분류 | 주소 |")
+        lines.append("|---|---|---|")
+        for p in places:
+            lines.append(f"| {p['name']} | {p['category']} | {p['address']} |")
+    else:
+        lines.append("- 데이터 없음 (장소 검색 결과 0건)")
+    lines.append("")
+
+    lines += ["## 1일 일정 제안", ""]
+    lines.append(f"- 오전: {rec['recommended_city']} 도착 후 주변 산책")
+    if places:
+        lines.append(f"- 오후: {places[0]['name']} 에서 점심 식사")
+    else:
+        lines.append("- 오후: 지역 명소 방문")
+    lines.append("- 저녁: 숙소 주변 야경 감상")
+    lines.append("")
+    return "\n".join(lines)
+
+
+def append_errors_section(markdown, errors):
+    """오류 요약은 LLM이 지어내지 않도록 코드가 직접 붙인다."""
+    lines = [markdown.rstrip(), "", "## 오류 요약(errors)", ""]
+    if not errors:
+        lines.append("- 없음")
+    else:
+        for e in errors:
+            lines.append(f"- `{e['step']}` / `{e['type']}` : {e['message'][:120]}")
+    lines.append("")
+    return "\n".join(lines)
+
+
+def generate_report(date_text, rec, places, api_key, errors):
+    """최종 리포트를 Markdown으로 만든다. 실패하면 직접 조립한 리포트를 쓴다."""
+    try:
+        text = call_gemini(
+            build_report_prompt(date_text, rec, places), api_key, json_mode=False
+        )
+        body = text.strip()
+        if body.startswith("```"):
+            body = body.split("```")[1]
+            if body.startswith("markdown"):
+                body = body[8:]
+        if "#" not in body:
+            raise ValueError("리포트 형식이 아닙니다.")
+    except Exception as e:
+        message = str(e) if isinstance(e, (RuntimeError, ValueError)) else type(e).__name__
+        add_error(errors, "llm_report", "API_ERROR", message)
+        print("    - 리포트 생성 실패 → 기본 리포트로 대체합니다:", message[:80])
+        body = build_fallback_report(date_text, rec, places)
+
+    return append_errors_section(body, errors)
+
+
+# ── 결과 저장 ───────────────────────────────────────────
+def save_results(date_text, payload, markdown):
+    """results/ 폴더를 만들고 원본 JSON과 최종 리포트를 저장한다."""
+    results_dir = Path("results")
+    results_dir.mkdir(parents=True, exist_ok=True)
+
+    json_path = results_dir / f"{date_text}_raw.json"
+    md_path = results_dir / f"{date_text}_travel_plan.md"
+
+    json_path.write_text(
+        json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
+    md_path.write_text(markdown, encoding="utf-8")
+    return json_path, md_path
+
+
 # ── 전체 흐름 ───────────────────────────────────────────
 def main():
     args = parse_args()
@@ -325,17 +447,27 @@ def main():
     print("[1/3] 1차 추천 생성 중(LLM)...")
     rec = get_recommendation(args.date, gemini_key, errors)
     print(f"    - recommended_city : {rec['recommended_city']}")
-    print(f"    - weather          : {rec['weather']}")
-    print(f"    - events           : {rec['events']}")
 
     print("[2/3] 맛집 검색 중(지도/장소 API)...")
     places = search_restaurants(rec["recommended_city"], kakao_key, errors)
-    for p in places:
-        print(f"      · {p['name']}  [{p['category']}]")
-        print(f"        {p['address']}  ({p['x']}, {p['y']})")
+
+    print("[3/3] 최종 리포트 생성 중(LLM)...")
+    markdown = generate_report(args.date, rec, places, gemini_key, errors)
+    print("    - 리포트 생성 완료")
+
+    payload = {
+        "date": args.date,
+        "generated_at": datetime.now().isoformat(timespec="seconds"),
+        "recommendation": rec,
+        "restaurants": places,
+        "errors": errors,
+    }
+    json_path, md_path = save_results(args.date, payload, markdown)
 
     print()
-    print(f"오류 기록 {len(errors)}건: {errors}")
+    print(f"완료! {md_path} 를 확인하세요.")
+    print(f"      원본 데이터는 {json_path} 에 있습니다.")
+    print(f"      오류 기록 {len(errors)}건")
 
 
 if __name__ == "__main__":
