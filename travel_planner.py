@@ -1,6 +1,6 @@
 """
 jina-gayo : API 활용 국내 여행지 추천 프로그램
-A1-2 과제 — 현재 단계: CLI 뼈대 + 1차 추천(Gemini)
+A1-2 과제 — 현재 단계: CLI + 1차 추천(Gemini) + 맛집 검색(Kakao)
 """
 
 import argparse
@@ -20,9 +20,12 @@ GEMINI_URL = (
     "https://generativelanguage.googleapis.com/v1beta/"
     f"models/{GEMINI_MODEL}:generateContent"
 )
+KAKAO_URL = "https://dapi.kakao.com/v2/local/search/keyword.json"
+
 TIMEOUT = 60               # 초. 이 시간이 지나면 응답을 포기한다.
 MAX_RETRY = 1              # 재시도는 최대 1회 (요건: 무한 재시도 금지)
 MAX_OUTPUT_TOKENS = 8192   # '생각 + 답변'의 합계 한도
+PLACE_COUNT = 5            # 맛집 검색 개수 (과제 권장 5곳)
 
 
 # ── 공통 도구 ───────────────────────────────────────────
@@ -246,6 +249,71 @@ def get_recommendation(date_text, api_key, errors):
     }
 
 
+# ── 2단계: 지도/장소 API 맛집 검색 ──────────────────────
+def to_float(value):
+    """카카오는 좌표를 문자열로 준다. 숫자로 바꾸되 실패하면 None."""
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def search_restaurants(city, api_key, errors):
+    """추천 도시로 맛집을 검색한다. 실패해도 빈 리스트를 돌려주고 계속 진행한다."""
+    query = f"{city} 맛집"
+    headers = {"Authorization": f"KakaoAK {api_key}"}
+    params = {"query": query, "size": PLACE_COUNT}
+
+    try:
+        # GET 요청: 검색어를 주소 뒤에 붙여서 보낸다.
+        response = requests.get(
+            KAKAO_URL, headers=headers, params=params, timeout=TIMEOUT
+        )
+    except Exception as e:
+        add_error(errors, "place_search", "NETWORK_ERROR", type(e).__name__)
+        print("    - 네트워크 오류:", type(e).__name__, "→ 맛집 없이 계속 진행합니다.")
+        return []
+
+    if response.status_code in (401, 403):
+        add_error(errors, "place_search", "AUTH_ERROR", f"HTTP {response.status_code}")
+        print(f"    - 오류: 인증 실패({response.status_code}). 키 설정을 확인하세요.")
+        print("    - 맛집 섹션은 '데이터 없음'으로 처리하고 계속 진행합니다.")
+        return []
+
+    if response.status_code == 429:
+        add_error(errors, "place_search", "QUOTA_ERROR", "HTTP 429")
+        print("    - 오류: 호출 한도 초과(429) → 맛집 없이 계속 진행합니다.")
+        return []
+
+    if response.status_code != 200:
+        add_error(errors, "place_search", "API_ERROR", f"HTTP {response.status_code}")
+        print(f"    - 오류: HTTP {response.status_code} → 맛집 없이 계속 진행합니다.")
+        return []
+
+    documents = response.json().get("documents", [])
+    if not documents:
+        add_error(errors, "place_search", "EMPTY_RESULT", f"0 results for query={query}")
+        print(f"    - 검색 결과 0건 (query={query}) → 데이터 없음으로 진행합니다.")
+        return []
+
+    # 카카오의 필드명을 우리 스키마 이름으로 바꿔 담는다.
+    places = []
+    for doc in documents:
+        places.append(
+            {
+                "name": doc.get("place_name", ""),
+                "address": doc.get("road_address_name") or doc.get("address_name", ""),
+                "category": doc.get("category_name", ""),
+                "url": doc.get("place_url", ""),
+                "x": to_float(doc.get("x")),
+                "y": to_float(doc.get("y")),
+            }
+        )
+
+    print(f"    - 맛집 {len(places)}곳 검색 완료")
+    return places
+
+
 # ── 전체 흐름 ───────────────────────────────────────────
 def main():
     args = parse_args()
@@ -253,19 +321,23 @@ def main():
     errors = []
 
     print(f"여행 날짜: {args.date}")
+
     print("[1/3] 1차 추천 생성 중(LLM)...")
-
     rec = get_recommendation(args.date, gemini_key, errors)
-
     print(f"    - recommended_city : {rec['recommended_city']}")
     print(f"    - weather          : {rec['weather']}")
     print(f"    - events           : {rec['events']}")
-    print(f"    - reason           : {rec['reason'][:60]}...")
+
+    print("[2/3] 맛집 검색 중(지도/장소 API)...")
+    places = search_restaurants(rec["recommended_city"], kakao_key, errors)
+    for p in places:
+        print(f"      · {p['name']}  [{p['category']}]")
+        print(f"        {p['address']}  ({p['x']}, {p['y']})")
+
     print()
     print(f"오류 기록 {len(errors)}건: {errors}")
 
 
 if __name__ == "__main__":
     main()
-
     
