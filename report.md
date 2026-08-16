@@ -15,7 +15,7 @@
 | **Python 버전** | 3.12.1 |
 | **LLM API** | Google Gemini (`gemini-3.5-flash-lite`) |
 | **지도/장소 API** | Kakao Local — 키워드 장소 검색 |
-| **총 커밋 수** | TODO (`git rev-list --count HEAD` 결과) |
+| **총 커밋 수** | TODO (`git rev-list --count HEAD` 결과) | 27 
 | **브랜치** | `main`, `feature/bonus-cache` (2개) |
 | **메인 실행 파일** | `travel_planner.py` |
 
